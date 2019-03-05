@@ -4,6 +4,21 @@ module.exports = function (source) {
     const $ = cheerio.load(source, {
         decodeEntities: false
     })
+    const getAllAttributes = function (node) {
+        return Object.keys(node.attribs).map((key) => {
+            return { name: key, value: node.attribs[key] };
+        });
+    };
+
+    /** 將 Template 模板標籤轉換成 Div，不然 Cheerio 會沒辦法解析 */
+    $('template').replaceWith(function () {
+        var $div       = $('<div>').attr('data-is-template', 'true')
+        var attributes = getAllAttributes(this)
+        for (var v in attributes) {
+            $div.attr(attributes[v].name, attributes[v].value)
+        }
+        return $div.html($(this).html());
+    });
 
     /** 將所有唯一名稱的「_my-id」轉譯成「:id="$style.my-id"」 */
     $('[id^="_"]').each(function (i, elem) {
@@ -79,6 +94,17 @@ module.exports = function (source) {
             //    $(this).attr(':class', `${moduleClass.join(',')}`)
             //    break
         }
+    });
+
+    /** 將原本的 Template 模板標籤轉回去 */
+    $('div[data-is-template="true"]').replaceWith(function () {
+        var $template = $('<template>')
+        var attributes = getAllAttributes(this)
+        for (var v in attributes) {
+            $template.attr(attributes[v].name, attributes[v].value)
+        }
+        $template.removeAttr('data-is-template')
+        return $template.html($(this).html());
     });
 
     return $('body').html()
